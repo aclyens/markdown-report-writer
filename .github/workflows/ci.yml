@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install pandoc
+        run: |
+          wget -q https://github.com/jgm/pandoc/releases/download/3.6.4/pandoc-3.6.4-1-amd64.deb
+          sudo dpkg -i pandoc-3.6.4-1-amd64.deb
+
+      - name: Install TeX Live (xelatex)
+        run: sudo apt-get install -y texlive-xetex texlive-fonts-recommended texlive-fonts-extra
+
+      - name: Install eisvogel template
+        run: |
+          mkdir -p ~/.local/share/pandoc/templates
+          wget -q -O /tmp/eisvogel.tar.gz \
+            https://github.com/Wandmalfarbe/pandoc-latex-template/releases/latest/download/Eisvogel.tar.gz
+          tar -xzf /tmp/eisvogel.tar.gz -C /tmp
+          cp /tmp/eisvogel.latex ~/.local/share/pandoc/templates/eisvogel.latex
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
