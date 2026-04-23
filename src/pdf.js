@@ -47,6 +47,8 @@ export async function convertToPdf(inputPath) {
       '--pdf-engine=xelatex',
       '--template', 'eisvogel',
       `--lua-filter=${luaFilter}`,
+      '-V', 'header-includes=\\usepackage{adjustbox}',
+      '-V', 'header-includes=\\usepackage{float}',
       '--toc',
     ]);
   } finally {

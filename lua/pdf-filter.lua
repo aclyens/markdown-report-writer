@@ -54,3 +54,19 @@ function Table(tbl)
   local after  = pandoc.RawBlock("latex", "\\normalsize")
   return { before, tbl, after }
 end
+
+-- Scale images to fit within the line width without upscaling or warping.
+-- Requires the LaTeX `adjustbox` package (included in TeX Live / MiKTeX).
+function Image(img)
+  local path = img.src
+  local caption = pandoc.utils.stringify(img.caption)
+  local latex = string.format(
+    '\\begin{figure}[H]\n' ..
+    '  \\centering\n' ..
+    '  \\adjustimage{max width=\\linewidth,keepaspectratio}{%s}\n' ..
+    (caption ~= '' and ('  \\caption{' .. caption .. '}\n') or '') ..
+    '\\end{figure}',
+    path
+  )
+  return pandoc.RawInline('latex', latex)
+end
