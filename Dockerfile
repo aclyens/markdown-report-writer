@@ -1,5 +1,5 @@
 # pandoc/extra includes pandoc, TeX Live, and the eisvogel template
-FROM pandoc/extra:3.6.4 AS base
+FROM docker.io/pandoc/extra:3.6.4 AS base
 
 # Install Node.js (LTS)
 RUN apk add --no-cache nodejs npm
