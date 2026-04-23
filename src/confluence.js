@@ -8,26 +8,36 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 /**
  * Convert a Markdown file to Confluence/Jira wiki format via pandoc.
  * @param {string} inputPath - Absolute or relative path to the .md file.
+ * @param {object} [config]  - Optional configuration (as returned by loadConfig).
  * @returns {Promise<void>}
  */
-export async function convertToConfluence(inputPath) {
+export async function convertToConfluence(inputPath, config = {}) {
   const absPath = resolve(inputPath);
   validate(absPath);
 
-  const luaFilter = resolve(__dirname, '../lua/confluence-filter.lua');
-  assertFilter(luaFilter);
+  const confluenceConfig = config.confluence ?? {};
+
+  const defaultLuaFilter = resolve(__dirname, '../lua/confluence-filter.lua');
+  const luaFilters = resolveFilters(confluenceConfig.luaFilter, defaultLuaFilter);
+  for (const f of luaFilters) assertFilter(f);
 
   const stem = basename(absPath, extname(absPath));
   const outputPath = resolve(dirname(absPath), `${stem}.txt`);
 
   console.log(`Converting "${stem}" to Confluence format...`);
-  await runPandoc(absPath, [
+
+  const args = [
     '-o', outputPath,
     '-f', 'markdown+raw_tex',
     '-t', 'jira',
-    `--lua-filter=${luaFilter}`,
-    '--toc',
-  ]);
+  ];
+
+  for (const f of luaFilters) args.push(`--lua-filter=${f}`);
+
+  if (confluenceConfig.tableOfContents !== false) args.push('--toc');
+  if (Array.isArray(confluenceConfig.extraArgs)) args.push(...confluenceConfig.extraArgs);
+
+  await runPandoc(absPath, args);
 
   // Post-process: strip {anchor:...} macros and add blank lines around headings
   let content = readFileSync(outputPath, 'utf8');
@@ -36,4 +46,11 @@ export async function convertToConfluence(inputPath) {
   writeFileSync(outputPath, content, 'utf8');
 
   console.log(`Conversion complete. Output file: ${stem}.txt`);
+}
+
+/** Return [defaultFilter] when luaFilter is unset, otherwise normalise to an array. */
+function resolveFilters(luaFilter, defaultFilter) {
+  if (luaFilter == null) return [defaultFilter];
+  if (Array.isArray(luaFilter)) return luaFilter;
+  return [luaFilter];
 }

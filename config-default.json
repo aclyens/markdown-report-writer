@@ -1,0 +1,25 @@
+{
+  "pdf": {
+    "template": "eisvogel",
+    "pdfEngine": "xelatex",
+    "font": "",
+    "fontSize": "",
+    "tableOfContents": true,
+    "luaFilter": "./lua/pdf-filter.lua",
+    "variables": {},
+    "extraArgs": []
+  },
+  "confluence": {
+    "tableOfContents": true,
+    "luaFilter": "./lua/confluence-filter.lua",
+    "extraArgs": []
+  },
+  "mermaid": {
+    "theme": "",
+    "scale": null,
+    "width": null,
+    "height": null,
+    "backgroundColor": "",
+    "puppeteerConfig": ""
+  }
+}

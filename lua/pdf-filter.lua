@@ -56,15 +56,39 @@ function Table(tbl)
 end
 
 -- Build the figure LaTeX for a given image path and caption string.
-local function make_figure_latex(path, caption)
+-- width / height are optional LaTeX dimension strings (e.g. "0.8\linewidth").
+local function make_figure_latex(path, caption, width, height)
+  local adj_opts
+  if width or height then
+    local parts = {}
+    if width  then parts[#parts + 1] = 'width='  .. width  end
+    if height then parts[#parts + 1] = 'height=' .. height end
+    parts[#parts + 1] = 'keepaspectratio'
+    adj_opts = table.concat(parts, ',')
+  else
+    adj_opts = 'max width=\\linewidth,max height=0.9\\textheight,keepaspectratio'
+  end
   return string.format(
     '\\begin{figure}[H]\n' ..
     '  \\centering\n' ..
-    '  \\adjustimage{max width=\\linewidth,keepaspectratio}{%s}\n' ..
+    '  \\adjustimage{%s}{%s}\n' ..
     (caption ~= '' and ('  \\caption{' .. caption .. '}\n') or '') ..
     '\\end{figure}',
+    adj_opts,
     path
   )
+end
+
+-- Convert a pandoc percentage dimension string to a LaTeX dimension.
+-- e.g. parse_percent("80%", "\\linewidth") → "0.8\\linewidth"
+-- Returns nil if val is nil or not a valid percentage.
+local function parse_percent(val, linedim)
+  if not val then return nil end
+  local n = tonumber(string.match(val, '^(%d+%.?%d*)%%$'))
+  if n then
+    return string.format('%.6g%s', n / 100, linedim)
+  end
+  return nil
 end
 
 -- Handle standalone figures (pandoc 3.x Figure AST element).
@@ -72,11 +96,13 @@ end
 -- the Image handler below replaces the inner Image node.
 local function handle_Figure(fig)
   local path = ''
+  local img_attrs = {}
   for _, block in ipairs(fig.content) do
     if block.t == 'Plain' or block.t == 'Para' then
       for _, inline in ipairs(block.content) do
         if inline.t == 'Image' then
           path = inline.src
+          img_attrs = inline.attr.attributes
           break
         end
       end
@@ -86,7 +112,9 @@ local function handle_Figure(fig)
   if path == '' then return end
 
   local caption = pandoc.utils.stringify(fig.caption.long)
-  return pandoc.RawBlock('latex', make_figure_latex(path, caption))
+  local width  = parse_percent(img_attrs['width'],  '\\linewidth')
+  local height = parse_percent(img_attrs['height'], '\\textheight')
+  return pandoc.RawBlock('latex', make_figure_latex(path, caption, width, height))
 end
 
 -- Scale images to fit within the line width without upscaling or warping.
@@ -96,7 +124,10 @@ end
 local function handle_Image(img)
   local path = img.src
   local caption = pandoc.utils.stringify(img.caption)
-  return pandoc.RawInline('latex', make_figure_latex(path, caption))
+  local attrs = img.attr.attributes
+  local width  = parse_percent(attrs['width'],  '\\linewidth')
+  local height = parse_percent(attrs['height'], '\\textheight')
+  return pandoc.RawInline('latex', make_figure_latex(path, caption, width, height))
 end
 
 -- Run Figure handler first (so it sees the original Image node inside),

@@ -4,7 +4,7 @@ This document contains a Mermaid diagram.
 
 ## Flow Diagram
 
-```mermaid
+```mermaid caption="Hello World!" width=50%
 graph TD
     A[Start] --> B{Decision}
     B -- Yes --> C[Do something]
