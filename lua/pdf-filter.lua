@@ -55,12 +55,9 @@ function Table(tbl)
   return { before, tbl, after }
 end
 
--- Scale images to fit within the line width without upscaling or warping.
--- Requires the LaTeX `adjustbox` package (included in TeX Live / MiKTeX).
-function Image(img)
-  local path = img.src
-  local caption = pandoc.utils.stringify(img.caption)
-  local latex = string.format(
+-- Build the figure LaTeX for a given image path and caption string.
+local function make_figure_latex(path, caption)
+  return string.format(
     '\\begin{figure}[H]\n' ..
     '  \\centering\n' ..
     '  \\adjustimage{max width=\\linewidth,keepaspectratio}{%s}\n' ..
@@ -68,5 +65,43 @@ function Image(img)
     '\\end{figure}',
     path
   )
-  return pandoc.RawInline('latex', latex)
 end
+
+-- Handle standalone figures (pandoc 3.x Figure AST element).
+-- This runs in a separate first pass so the image path can be read before
+-- the Image handler below replaces the inner Image node.
+local function handle_Figure(fig)
+  local path = ''
+  for _, block in ipairs(fig.content) do
+    if block.t == 'Plain' or block.t == 'Para' then
+      for _, inline in ipairs(block.content) do
+        if inline.t == 'Image' then
+          path = inline.src
+          break
+        end
+      end
+    end
+    if path ~= '' then break end
+  end
+  if path == '' then return end
+
+  local caption = pandoc.utils.stringify(fig.caption.long)
+  return pandoc.RawBlock('latex', make_figure_latex(path, caption))
+end
+
+-- Scale images to fit within the line width without upscaling or warping.
+-- Requires the LaTeX `adjustbox` package (included in TeX Live / MiKTeX).
+-- In pandoc 3.x this only fires for inline (non-standalone) images because
+-- standalone ones are already handled by handle_Figure above.
+local function handle_Image(img)
+  local path = img.src
+  local caption = pandoc.utils.stringify(img.caption)
+  return pandoc.RawInline('latex', make_figure_latex(path, caption))
+end
+
+-- Run Figure handler first (so it sees the original Image node inside),
+-- then Table and Image handlers in a second pass.
+return {
+  { Figure = handle_Figure },
+  { Table = Table, Image = handle_Image },
+}
